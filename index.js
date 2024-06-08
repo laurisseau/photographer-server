@@ -1,11 +1,11 @@
 import express from 'express';
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { errors } from './controller/errors.js';
 import userRouter from './routes/user.js';
 import adminRouter from './routes/admin.js';
-
+import authRouter from './routes/auth.js';
 
 const app = express();
 dotenv.config();
@@ -19,7 +19,7 @@ app.use((req, res, next) => {
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("connected to db");
+    console.log('connected to db');
   })
   .catch((err) => {
     console.log(err.message);
@@ -28,9 +28,15 @@ mongoose
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use('/api/user/', userRouter);
+app.use('/api/admin/', adminRouter);
+app.use('/api/auth/', authRouter);
+
+app.use("/", (req, res,) => {
+  return res.status(200).send({ message: 'Success' });
+})
+
 app.use(errors);
-app.use(userRouter);
-app.use(adminRouter)
 
 const port = process.env.PORT || 5000;
 

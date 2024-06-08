@@ -1,8 +1,8 @@
 import express from 'express';
-import { test } from '../controller/user.js';
+import { getUserPhotos } from '../controller/user.js';
 
 const userRouter = express.Router();
 
-userRouter.get('/', test);
+userRouter.get('/getUserPhotos/:id', getUserPhotos);
 
 export default userRouter;
