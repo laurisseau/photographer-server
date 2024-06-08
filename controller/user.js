@@ -24,7 +24,7 @@ export const getUserPhotos = expressAsyncHandler(async (req, res, next) => {
   const userPhotos = await Photos.findOne({ user: userId });
 
   if (!userPhotos) {
-    return res.status(404).json({ error: 'User Id does not exist' });
+    return res.status(404).json({ message: 'User Id does not exist' });
   }
 
   const photoUrls = [];

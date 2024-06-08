@@ -21,13 +21,18 @@ const s3 = new S3Client({
   region: bucketRegion,
 });
 
-const uploadLimit = 3;
+const uploadLimit = 4;
+
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-  if(req.files.length > uploadLimit || req.files.length === 0){
-    cb(new Error(`You can upload a maximum of ${uploadLimit} images`), false);
-  }else if (file.mimetype.startsWith('image')) {
+  // Check if the number of uploaded files exceeds the upload limit
+  // subtract the upload limit by 1 so the real limit is uploadLimit - 1
+  if (req.files && req.files.length > uploadLimit - 1) {
+    return cb(new Error(`You can upload 1 - ${uploadLimit - 1} images`), false);
+  }
+
+  if (file.mimetype.startsWith('image')) {
     cb(null, true);
   } else {
     cb(new Error('Not an image! Please upload only images.'), false);
@@ -44,7 +49,10 @@ export const uploadPhotos = upload.array('images', uploadLimit);
 
 /* Resize User Photo */
 export const resizePhotos = expressAsyncHandler(async (req, res, next) => {
-  if (!req.files || req.files.length === 0) return next(); // Check if files exist
+  if (!req.files || req.files.length === 0)
+    return res
+      .status(404)
+      .send({ message: `You can upload 1 - ${uploadLimit - 1} images` });
 
   const randomImageName = (bytes = 32) =>
     crypto.randomBytes(bytes).toString('hex');
