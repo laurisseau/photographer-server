@@ -2,7 +2,6 @@ import expressAsyncHandler from 'express-async-handler';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
 import multer from 'multer';
 import sharp from 'sharp';
 
@@ -21,7 +20,7 @@ const s3 = new S3Client({
   region: bucketRegion,
 });
 
-const uploadLimit = 4;
+const uploadLimit = 501;
 
 const multerStorage = multer.memoryStorage();
 
@@ -49,17 +48,38 @@ export const uploadPhotos = upload.array('images', uploadLimit);
 
 /* Resize User Photo */
 export const resizePhotos = expressAsyncHandler(async (req, res, next) => {
-  if (!req.files || req.files.length === 0)
+  if (!req.files || req.files.length === 0) {
     return res
       .status(404)
       .send({ message: `You can upload 1 - ${uploadLimit - 1} images` });
+  }
 
   const randomImageName = (bytes = 32) =>
     crypto.randomBytes(bytes).toString('hex');
 
   const resizedImages = await Promise.all(
     req.files.map(async (file) => {
-      const buffer = await sharp(file.buffer).resize(350, 475).toBuffer();
+
+      const metadata = await sharp(file.buffer).metadata();
+      const newWidth = Math.round(metadata.width * 0.8); // 80% of original width
+      const newHeight = Math.round(metadata.height * 0.8); // 80% of original height
+
+      let buffer = await sharp(file.buffer)
+        .resize({ width: newWidth, height: newHeight })
+        .toBuffer();
+
+      const mimetype = file.mimetype;
+      const format = mimetype.split('/')[1];
+
+      // Apply format-specific transformations
+      const image = sharp(buffer);
+      if (format === 'webp') {
+        buffer = await image.webp({ quality: 80 }).toBuffer();
+      } else if (format === 'png') {
+        buffer = await image.png({ compressionLevel: 9 }).toBuffer(); // PNG quality is set by compression level
+      } else {
+        buffer = await image.jpeg({ quality: 70 }).toBuffer();
+      }
 
       const filename = randomImageName();
 
@@ -71,7 +91,6 @@ export const resizePhotos = expressAsyncHandler(async (req, res, next) => {
       };
 
       const command = new PutObjectCommand(params);
-
       await s3.send(command);
 
       return { filename, mimetype: file.mimetype };
